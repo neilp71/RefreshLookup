@@ -1096,7 +1096,7 @@ function Export-ReportLine
 		[string[]]$exportReportPaths
 	)
 	
-	$index = [math]::Floor($GRPNumber / 500)
+	$index = [math]::Floor($GRPNumber / 3000)
 	if ($index -lt $exportReportPaths.Length)
 	{
 		$reportPath = $exportReportPaths[$index]

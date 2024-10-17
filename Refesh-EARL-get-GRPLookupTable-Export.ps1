@@ -9,10 +9,10 @@
 	 Created on:    07/08/2023 14:00
 	 Created by:   	Neil Poultney
 	 Organization: 	NDP Consultancy Ltd - neil.poultney@ndpconsultancyltd.co.uk
-	 Filename:     	Refresh-EARL-get-lookupTable-Export.ps1
+	 Filename:     	Refresh-EARL-get-GRPlookupTable-Export.ps1
 	===========================================================================
 	.DESCRIPTION
-		Exports for EARL MailDb to Lookup Table to temp db for refresh.
+		Exports for EARL Temp GRPLookup Table to temp db for refresh.
 
 		Change Log
 		V1.00, 11/10/2023 - Initial full version

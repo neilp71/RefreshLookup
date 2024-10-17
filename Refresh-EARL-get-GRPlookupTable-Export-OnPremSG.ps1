@@ -1096,7 +1096,7 @@ function Export-ReportLine
 		[string[]]$exportReportPaths
 	)
 	
-	$index = [math]::Floor($GRPNumber / 500)
+	$index = [math]::Floor($GRPNumber / 3000)
 	if ($index -lt $exportReportPaths.Length)
 	{
 		$reportPath = $exportReportPaths[$index]
@@ -1132,7 +1132,7 @@ function exportSGOnPrem
 	$GRPbasePath = "H:\M365Reports\Refresh-EARL-GRP-OnPremSG"
 	
 	# Loop through numbers 1 to 30 to create file paths
-	for ($i = 1; $i -le 60; $i++)
+	for ($i = 1; $i -le 80; $i++)
 	{
 		# Get the current date and time in the specified format
 		$nowfiledate = Get-Date -Format "yyyy-MM-dd-hh-mm-ss"
@@ -2000,7 +2000,12 @@ function exportSGOnPrem
 							$exportreportgrpcsv62,
 							$exportreportgrpcsv63,
 							$exportreportgrpcsv64,
-							$exportreportgrpcsv65
+							$exportreportgrpcsv65,
+							$exportreportgrpcsv66,
+							$exportreportgrpcsv67,
+							$exportreportgrpcsv68,
+							$exportreportgrpcsv69,
+							$exportreportgrpcsv70
 						)
 						
 						# Example usage

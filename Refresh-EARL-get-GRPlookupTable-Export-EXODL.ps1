@@ -3169,7 +3169,7 @@ function exportRLEXO
 	Connect-EXO
 	$lasthour = (get-date).addhours(-4)
 	#$grp1 = Get-DistributionGroup -RecipientTypeDetails MailUniversalSecurityGroup -ResultSize unlimited | Select DisplayName, RecipientTypeDetails, SamAccountName, PrimarySmtpAddress, HiddenFromAddressListsEnabled, Description, Alias, GroupType, IsDirSynced, ExternalDirectoryObjectId, RequireSenderAuthenticationEnabled, DistinguishedName, ManagedBy
-	$grp1 = Get-DistributionGroup -recipienttypedetails RoomList -Filter "Isdirsynced -eq 'False' -and WhenChanged -gt '$lasthour'" -resultsize unlimited | Select DisplayName, RecipientTypeDetails, SamAccountName, PrimarySmtpAddress, HiddenFromAddressListsEnabled, Description, Alias, GroupType, IsDirSynced, ExternalDirectoryObjectId, RequireSenderAuthenticationEnabled, DistinguishedName
+	$grp1 = Get-DistributionGroup -recipienttypedetails RoomList -Filter "Isdirsynced -eq 'False' " -resultsize unlimited | Select DisplayName, RecipientTypeDetails, SamAccountName, PrimarySmtpAddress, HiddenFromAddressListsEnabled, Description, Alias, GroupType, IsDirSynced, ExternalDirectoryObjectId, RequireSenderAuthenticationEnabled, DistinguishedName
 	
 	
 	
@@ -3980,7 +3980,7 @@ function exportDDLEXO
 	Connect-EXO
 	$lasthour = (get-date).addhours(-4)
 	#$grp1 = Get-DistributionGroup -RecipientTypeDetails MailUniversalSecurityGroup -ResultSize unlimited | Select DisplayName, RecipientTypeDetails, SamAccountName, PrimarySmtpAddress, HiddenFromAddressListsEnabled, Description, Alias, GroupType, IsDirSynced, ExternalDirectoryObjectId, RequireSenderAuthenticationEnabled, DistinguishedName, ManagedBy
-	$grp1 = Get-DynamicDistributionGroup -Filter "Isdirsynced -eq 'False' -and WhenChanged -gt '$lasthour'" -resultsize unlimited | Select DisplayName, RecipientTypeDetails, Identity, PrimarySmtpAddress, HiddenFromAddressListsEnabled, Description, Alias, GroupType, IsDirSynced, ExternalDirectoryObjectId, RequireSenderAuthenticationEnabled, DistinguishedName
+	$grp1 = Get-DynamicDistributionGroup -resultsize unlimited | Select DisplayName, RecipientTypeDetails, Identity, PrimarySmtpAddress, HiddenFromAddressListsEnabled, Description, Alias, GroupType, IsDirSynced, ExternalDirectoryObjectId, RequireSenderAuthenticationEnabled, DistinguishedName
 	
 	
 	

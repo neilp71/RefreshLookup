@@ -3945,7 +3945,7 @@ function exportDDLEXO
 	$GRPbasePath = "H:\M365Reports\Refresh-EARL-GRP-EXODDL"
 	
 	# Loop through numbers 1 to 30 to create file paths
-	for ($i = 1; $i -le 3; $i++)
+	for ($i = 1; $i -le 5; $i++)
 	{
 		# Get the current date and time in the specified format
 		$nowfiledate = Get-Date -Format "yyyy-MM-dd-hh-mm-ss"
@@ -5880,8 +5880,27 @@ function exportM365GrpEXO
 		@{ Path = $exportreportgrpcsv57; BaseName = "EARL-TempGRPTable-EXOM365Groups57" },
 		@{ Path = $exportreportgrpcsv58; BaseName = "EARL-TempGRPTable-EXOM365Groups58" },
 		@{ Path = $exportreportgrpcsv59; BaseName = "EARL-TempGRPTable-EXOM365Groups59" },
-		@{ Path = $exportreportgrpcsv60; BaseName = "EARL-TempGRPTable-EXOM365Groups60" }
-		
+		@{ Path = $exportreportgrpcsv60; BaseName = "EARL-TempGRPTable-EXOM365Groups60" },
+		@{ Path = $exportreportgrpcsv61; BaseName = "EARL-TempGRPTable-EXOM365Groups61" },
+		@{ Path = $exportreportgrpcsv62; BaseName = "EARL-TempGRPTable-EXOM365Groups62" },
+		@{ Path = $exportreportgrpcsv63; BaseName = "EARL-TempGRPTable-EXOM365Groups63" },
+		@{ Path = $exportreportgrpcsv64; BaseName = "EARL-TempGRPTable-EXOM365Groups64" },
+		@{ Path = $exportreportgrpcsv65; BaseName = "EARL-TempGRPTable-EXOM365Groups65" },
+		@{ Path = $exportreportgrpcsv66; BaseName = "EARL-TempGRPTable-EXOM365Groups66" },
+		@{ Path = $exportreportgrpcsv67; BaseName = "EARL-TempGRPTable-EXOM365Groups67" },
+		@{ Path = $exportreportgrpcsv68; BaseName = "EARL-TempGRPTable-EXOM365Groups68" },
+		@{ Path = $exportreportgrpcsv69; BaseName = "EARL-TempGRPTable-EXOM365Groups69" },
+		@{ Path = $exportreportgrpcsv70; BaseName = "EARL-TempGRPTable-EXOM365Groups70" },
+		@{ Path = $exportreportgrpcsv71; BaseName = "EARL-TempGRPTable-EXOM365Groups71" },
+		@{ Path = $exportreportgrpcsv72; BaseName = "EARL-TempGRPTable-EXOM365Groups72" },
+		@{ Path = $exportreportgrpcsv73; BaseName = "EARL-TempGRPTable-EXOM365Groups73" },
+		@{ Path = $exportreportgrpcsv74; BaseName = "EARL-TempGRPTable-EXOM365Groups74" },
+		@{ Path = $exportreportgrpcsv75; BaseName = "EARL-TempGRPTable-EXOM365Groups75" },
+		@{ Path = $exportreportgrpcsv76; BaseName = "EARL-TempGRPTable-EXOM365Groups76" },
+		@{ Path = $exportreportgrpcsv77; BaseName = "EARL-TempGRPTable-EXOM365Groups77" },
+		@{ Path = $exportreportgrpcsv78; BaseName = "EARL-TempGRPTable-EXOM365Groups78" },
+		@{ Path = $exportreportgrpcsv79; BaseName = "EARL-TempGRPTable-EXOM365Groups79" },
+		@{ Path = $exportreportgrpcsv80; BaseName = "EARL-TempGRPTable-EXOM365Groups80" }
 	)
 	
 	Map-Filewatcher

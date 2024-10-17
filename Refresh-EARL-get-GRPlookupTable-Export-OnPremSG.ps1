@@ -1558,7 +1558,12 @@ function exportSGOnPrem
 					$exportreportgrpcsv62,
 					$exportreportgrpcsv63,
 					$exportreportgrpcsv64,
-					$exportreportgrpcsv65
+					$exportreportgrpcsv65,
+					$exportreportgrpcsv66,
+					$exportreportgrpcsv67,
+					$exportreportgrpcsv68,
+					$exportreportgrpcsv69,
+					$exportreportgrpcsv70
 				)
 				
 				# Example usage
@@ -1702,7 +1707,12 @@ function exportSGOnPrem
 						$exportreportgrpcsv62,
 						$exportreportgrpcsv63,
 						$exportreportgrpcsv64,
-						$exportreportgrpcsv65
+						$exportreportgrpcsv65,
+						$exportreportgrpcsv66,
+						$exportreportgrpcsv67,
+						$exportreportgrpcsv68,
+						$exportreportgrpcsv69,
+						$exportreportgrpcsv70
 					)
 					
 					# Example usage
@@ -1842,7 +1852,12 @@ function exportSGOnPrem
 							$exportreportgrpcsv62,
 							$exportreportgrpcsv63,
 							$exportreportgrpcsv64,
-							$exportreportgrpcsv65
+							$exportreportgrpcsv65,
+							$exportreportgrpcsv66,
+							$exportreportgrpcsv67,
+							$exportreportgrpcsv68,
+							$exportreportgrpcsv69,
+							$exportreportgrpcsv70
 						)
 						
 						# Example usage
@@ -2094,7 +2109,12 @@ DisconnectExchangeOnPrem
 		@{ Path = $exportreportgrpcsv62; BaseName = "EARL-TempGRPTable-OnPremSGgroups62" },
 		@{ Path = $exportreportgrpcsv63; BaseName = "EARL-TempGRPTable-OnPremSGgroups63" },
 		@{ Path = $exportreportgrpcsv64; BaseName = "EARL-TempGRPTable-OnPremSGgroups64" },
-		@{ Path = $exportreportgrpcsv65; BaseName = "EARL-TempGRPTable-OnPremSGgroups65" }
+		@{ Path = $exportreportgrpcsv65; BaseName = "EARL-TempGRPTable-OnPremSGgroups65" },
+		@{ Path = $exportreportgrpcsv66; BaseName = "EARL-TempGRPTable-OnPremSGgroups66" },
+		@{ Path = $exportreportgrpcsv67; BaseName = "EARL-TempGRPTable-OnPremSGgroups67" },
+		@{ Path = $exportreportgrpcsv68; BaseName = "EARL-TempGRPTable-OnPremSGgroups68" },
+		@{ Path = $exportreportgrpcsv69; BaseName = "EARL-TempGRPTable-OnPremSGgroups69" },
+		@{ Path = $exportreportgrpcsv70; BaseName = "EARL-TempGRPTable-OnPremSGgroups70" }
 	)
 	
 	

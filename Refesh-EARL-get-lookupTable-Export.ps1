@@ -516,7 +516,7 @@ function Disconnect-EXO
 }
 
 
-function Process-CsvFileremotembx
+function Process-CsvFileremoteusermailboxes
 {
 	param (
 		[string]$csvFilePath,
@@ -530,7 +530,7 @@ function Process-CsvFileremotembx
 		
 		$nowFileDate = Get-Date -Format "yyyy-MM-dd-HH-mm-ss"
 		$finalOutCsv = "$outputFolder\EARL-TempLookupTbl-remotembx-$index-$nowFileDate-1.csv"
-		$outputFile = "$outputFolder\EARL-TempLookupTable-remotembx-$index-$nowFileDate-2.csv"
+		$outputFile = "$outputFolder\TempLookupUploads\EARL-TempLookupTable-remotembx-$index-$nowFileDate-2.csv"
 		New-Variable -Name "outfile$index" -Value $outputFile -Force
 		$inputCsv | Sort-Object -Property @{ Expression = { $_.Samaccountname }; Ascending = $True } |
 		Export-Csv -Path $finalOutCsv -NoTypeInformation -Delimiter "|" -Encoding UTF8
@@ -539,7 +539,148 @@ function Process-CsvFileremotembx
 		
 		Get-Content -Path $finalOutCsv | Where-Object { $_.Trim() -ne "" } | Set-Content -Path $outputFile -Encoding UTF8
 	}
+	
+	Try
+	{
+		
+		Copy-item -path $outputFile  -destination $filewatcherout
+		$now = [datetime]::Now.ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss")
+		Add-Content $logfile "Temp Lookup remotemailboxes Users File Copied to FileWatcher $outputFile  to $filewatcherout [1st try] | $now"
+		Start-Sleep -Seconds 20
+		
+		
+		
+		#RemoveFilewatcher
+		
+		
+		#Map-Filewatcher
+	}
+	catch
+	{
+		
+		try
+		{
+			RemoveFilewatcher
+			Start-Sleep -s 15
+			Map-Filewatcher
+			Copy-item -path $Outfile -destination $filewatcherout
+			$now = [datetime]::Now.ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss")
+			Add-Content $logfile "Temp Lookup remotemailboxes Users File Copied to FileWatcher $outputFile  to $filewatcherout [2nd try] | $now"
+			Start-Sleep -Seconds 30
+			
+			#RemoveFilewatcher
+		}
+		catch
+		{
+			$now = [datetime]::Now.ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss")
+			Add-Content $logfile "Cannot copy files to FileWatcher $outputFile  | $now"
+		}
+	}
+	
+	if (Test-Path $finaloutcsv)
+	{
+		Remove-Item $finaloutcsv
+	}
+	
+	if (Test-Path $filePath)
+	{
+		Remove-Item $filePath
+	}
+	
+	
 }
+
+
+function Process-CsvFile
+{
+	param (
+		[string]$filePath,
+		[string]$outputBaseName
+	)
+	
+	if (Test-Path -Path $filePath)
+	{
+		$nowfiledate = Get-Date -f "yyyy-MM-dd-HH-mm"
+		$inputCsv = Import-Csv $filePath -Delimiter "|" | Sort-Object * -Unique
+		$finaloutcsv = "H:\M365Reports\${outputBaseName}-${nowfiledate}-1.csv"
+		
+		$inputCsv | Sort-Object -Property @{ Expression = { $_.Samaccountname }; Ascending = $false } |
+		Export-Csv $finaloutcsv -NoTypeInformation -Delimiter "|" -Encoding UTF8
+		
+		Start-Sleep -Seconds 5
+		
+		$nowfiledate = Get-Date -f "yyyy-MM-dd-HH-mm-ss"
+		$Outfile = "H:\M365Reports\TempLookupUploads\${outputBaseName}-${nowfiledate}-2.csv"
+		
+		Get-Content $finaloutcsv | Where-Object { $_.Trim() -ne "" } | Set-Content $Outfile -Encoding UTF8
+	}
+	
+	Try
+	{
+		
+		Copy-item -path $Outfile -destination $filewatcherout
+		$now = [datetime]::Now.ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss")
+		Add-Content $logfile "Temp Refresh File Copied to FileWatcher $Outfile to $filewatcherout [1st try] | $now"
+		Start-Sleep -Seconds 20
+		
+		
+		
+		#RemoveFilewatcher
+		
+		
+		#Map-Filewatcher
+	}
+	catch
+	{
+		
+		try
+		{
+			RemoveFilewatcher
+			Start-Sleep -s 15
+			Map-Filewatcher
+			Copy-item -path $Outfile -destination $filewatcherout
+			$now = [datetime]::Now.ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss")
+			Add-Content $logfile "Temp Refresh file Copied to FileWatcher $Outfile to $filewatcherout [2nd try] | $now"
+			Start-Sleep -Seconds 30
+			
+			#RemoveFilewatcher
+		}
+		catch
+		{
+			$now = [datetime]::Now.ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss")
+			Add-Content $logfile "Cannot copy files to FileWatcher $Outfile | $now"
+		}
+	}
+	
+	if (Test-Path $finaloutcsv)
+	{
+		Remove-Item $finaloutcsv
+	}
+	
+	if (Test-Path $filePath)
+	{
+		Remove-Item $filePath
+	}
+	
+	
+}
+
+function Export-ReportLine
+{
+	param (
+		[int]$MBXNumber,
+		[object]$reportLine,
+		[string[]]$exportReportPaths
+	)
+	
+	$index = [math]::Floor($MBXNumber / 1000)
+	if ($index -lt $exportReportPaths.Length)
+	{
+		$reportPath = $exportReportPaths[$index]
+		$reportLine | Export-Csv $reportPath -NoTypeInformation -Delimiter "|" -Encoding UTF8 -Append -Force
+	}
+}
+
 
 $now = Get-Date -format dd-M-yyyy-HH-mm
 
@@ -904,7 +1045,7 @@ function exportlocalmbx
 	$inputCsv1 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv -NoTypeInformation -delimiter "|" -Encoding UTF8
 	Start-Sleep -s 5
 	$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-	$Outfile1 = "H:\M365Reports\EARL-TempLookupTable-localmbx-" + $nowfiledate + "-2.csv"
+	$Outfile1 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-localmbx-" + $nowfiledate + "-2.csv"
 	gc $finaloutcsv | ? { $_.trim() -ne "" } | set-content $Outfile1
 	
 	
@@ -1857,141 +1998,82 @@ function exportremoteusermbx
 		DisconnectExchangeOnPrem
 		
 		
-		if ($count -ge 1)
-		{
-			$outputFolder = "H:\M365Reports"
+		
+		$exportfiles = @(
+			@{ Path = $exportreportusercsv1; BaseName = "EARL-TempLookupTable-remotemailbox-1" },
+			@{ Path = $exportreportusercsv2; BaseName = "EARL-TempLookupTable-remotemailbox-2" },
+			@{ Path = $exportreportusercsv3; BaseName = "EARL-TempLookupTable-remotemailbox-3" },
+			@{ Path = $exportreportusercsv4; BaseName = "EARL-TempLookupTable-remotemailbox-4" },
+			@{ Path = $exportreportusercsv5; BaseName = "EARL-TempLookupTable-remotemailbox-5" },
+			@{ Path = $exportreportusercsv6; BaseName = "EARL-TempLookupTable-remotemailbox-6" },
+			@{ Path = $exportreportusercsv7; BaseName = "EARL-TempLookupTable-remotemailbox-7" },
+			@{ Path = $exportreportusercsv8; BaseName = "EARL-TempLookupTable-remotemailbox-8" },
+			@{ Path = $exportreportusercsv9; BaseName = "EARL-TempLookupTable-remotemailbox-9" },
+			@{ Path = $exportreportusercsv10; BaseName = "EARL-TempLookupTable-remotemailbox-10" },
+			@{ Path = $exportreportusercsv11; BaseName = "EARL-TempLookupTable-remotemailbox-11" },
+			@{ Path = $exportreportusercsv12; BaseName = "EARL-TempLookupTable-remotemailbox-12" },
+			@{ Path = $exportreportusercsv13; BaseName = "EARL-TempLookupTable-remotemailbox-13" },
+			@{ Path = $exportreportusercsv14; BaseName = "EARL-TempLookupTable-remotemailbox-14" },
+			@{ Path = $exportreportusercsv15; BaseName = "EARL-TempLookupTable-remotemailbox-15" },
+			@{ Path = $exportreportusercsv16; BaseName = "EARL-TempLookupTable-remotemailbox-16" },
+			@{ Path = $exportreportusercsv17; BaseName = "EARL-TempLookupTable-remotemailbox-17" },
+			@{ Path = $exportreportusercsv18; BaseName = "EARL-TempLookupTable-remotemailbox-18" },
+			@{ Path = $exportreportusercsv19; BaseName = "EARL-TempLookupTable-remotemailbox-19" },
+			@{ Path = $exportreportusercsv20; BaseName = "EARL-TempLookupTable-remotemailbox-20" },
+			@{ Path = $exportreportusercsv21; BaseName = "EARL-TempLookupTable-remotemailbox-21" },
+			@{ Path = $exportreportusercsv22; BaseName = "EARL-TempLookupTable-remotemailbox-22" },
+			@{ Path = $exportreportusercsv23; BaseName = "EARL-TempLookupTable-remotemailbox-23" },
+			@{ Path = $exportreportusercsv24; BaseName = "EARL-TempLookupTable-remotemailbox-24" },
+			@{ Path = $exportreportusercsv25; BaseName = "EARL-TempLookupTable-remotemailbox-25" },
+			@{ Path = $exportreportusercsv26; BaseName = "EARL-TempLookupTable-remotemailbox-26" },
+			@{ Path = $exportreportusercsv27; BaseName = "EARL-TempLookupTable-remotemailbox-27" },
+			@{ Path = $exportreportusercsv28; BaseName = "EARL-TempLookupTable-remotemailbox-28" },
+			@{ Path = $exportreportusercsv29; BaseName = "EARL-TempLookupTable-remotemailbox-29" },
+			@{ Path = $exportreportusercsv30; BaseName = "EARL-TempLookupTable-remotemailbox-30" },
+			@{ Path = $exportreportusercsv31; BaseName = "EARL-TempLookupTable-remotemailbox-31" },
+			@{ Path = $exportreportusercsv32; BaseName = "EARL-TempLookupTable-remotemailbox-32" },
+			@{ Path = $exportreportusercsv33; BaseName = "EARL-TempLookupTable-remotemailbox-33" },
+			@{ Path = $exportreportusercsv34; BaseName = "EARL-TempLookupTable-remotemailbox-34" },
+			@{ Path = $exportreportusercsv35; BaseName = "EARL-TempLookupTable-remotemailbox-35" },
+			@{ Path = $exportreportusercsv36; BaseName = "EARL-TempLookupTable-remotemailbox-36" },
+			@{ Path = $exportreportusercsv37; BaseName = "EARL-TempLookupTable-remotemailbox-37" },
+			@{ Path = $exportreportusercsv38; BaseName = "EARL-TempLookupTable-remotemailbox-38" },
+			@{ Path = $exportreportusercsv39; BaseName = "EARL-TempLookupTable-remotemailbox-39" },
+			@{ Path = $exportreportusercsv40; BaseName = "EARL-TempLookupTable-remotemailbox-40" },
+			@{ Path = $exportreportusercsv41; BaseName = "EARL-TempLookupTable-remotemailbox-41" },
+			@{ Path = $exportreportusercsv42; BaseName = "EARL-TempLookupTable-remotemailbox-42" },
+			@{ Path = $exportreportusercsv43; BaseName = "EARL-TempLookupTable-remotemailbox-43" },
+			@{ Path = $exportreportusercsv44; BaseName = "EARL-TempLookupTable-remotemailbox-44" },
+			@{ Path = $exportreportusercsv45; BaseName = "EARL-TempLookupTable-remotemailbox-45" },
+			@{ Path = $exportreportusercsv46; BaseName = "EARL-TempLookupTable-remotemailbox-46" },
+			@{ Path = $exportreportusercsv47; BaseName = "EARL-TempLookupTable-remotemailbox-47" },
+			@{ Path = $exportreportusercsv48; BaseName = "EARL-TempLookupTable-remotemailbox-48" },
+			@{ Path = $exportreportusercsv49; BaseName = "EARL-TempLookupTable-remotemailbox-49" },
+			@{ Path = $exportreportusercsv50; BaseName = "EARL-TempLookupTable-remotemailbox-50" }
 			
-			for ($i = 1; $i -le 50; $i++)
-			{
-				$csvFilePath = Get-Variable -Name "exportreportusercsv$i" -ValueOnly
-				if ($csvFilePath)
-				{
-					Process-CsvFileremotembx -csvFilePath $csvFilePath -outputFolder $outputFolder -index $i
-				}
-				
-				Start-Sleep -Seconds 2
-			}
+		
+			
+			
+			
+			
+			
+		)
+		
+		Map-Filewatcher
+		# Process each file
+		foreach ($file in $exportfiles)
+		{
+			Process-CsvFile -filePath $file.Path -outputBaseName $file.BaseName
+			Start-Sleep -Seconds 2
 		}
 		
 		
+		RemoveFilewatcher
+		
+		
+		
 				
 			
-			#copy to filewatcher	
-			
-			$Outfiles = @(
-				$Outfile1,
-				$Outfile2,
-				$Outfile3,
-				$Outfile4,
-				$Outfile5,
-				$Outfile6,
-				$Outfile7,
-				$Outfile8,
-				$Outfile9,
-				$Outfile10,
-				$Outfile11,
-				$Outfile12,
-				$Outfile13,
-				$Outfile14,
-				$Outfile15,
-				$Outfile16,
-				$Outfile17,
-				$Outfile18,
-				$Outfile19,
-				$Outfile20,
-				$Outfile21,
-				$Outfile22,
-				$Outfile23,
-				$Outfile24,
-				$Outfile25,
-				$Outfile26,
-				$Outfile27,
-				$Outfile28,
-				$Outfile29,
-				$Outfile30,
-				$Outfile31,
-				$Outfile32,
-				$Outfile33,
-				$Outfile34,
-				$Outfile35,
-				$Outfile36,
-				$Outfile37,
-				$Outfile38,
-				$Outfile39,
-				$Outfile40,
-				$Outfile41,
-				$Outfile42,
-				$Outfile43,
-				$Outfile44,
-				$Outfile45,
-				$Outfile46,
-				$Outfile47,
-				$Outfile48,
-				$Outfile49,
-				$Outfile50
-			)
-			
-			Map-Filewatcher
-			
-			foreach ($Outfile in $Outfiles)
-			{
-				if (Test-Path $Outfile)
-				{
-					Try
-					{
-						Copy-item -path $Outfile -destination $filewatcherout
-						$now = [datetime]::Now.ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss")
-						Add-Content $logfile "Mailboxes File Copied to FileWatcher $Outfile to $filewatcherout [1st try] | $now"
-						Start-Sleep -Seconds 30
-					}
-					catch
-					{
-						Start-Sleep -Seconds 30
-						try
-						{
-							RemoveFilewatcher
-							Start-Sleep -Seconds 15
-							Map-Filewatcher
-							Copy-item -path $Outfile -destination $filewatcherout
-							$now = [datetime]::Now.ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss")
-							Add-Content $logfile "Mailboxes File Copied to FileWatcher $Outfile to $filewatcherout [2nd try] | $now"
-							Start-Sleep -Seconds 30
-						}
-						catch
-						{
-							$now = [datetime]::Now.ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss")
-							Add-Content $logfile "Cannot copy files to FileWatcher $Outfile | $now"
-						}
-					}
-				}
-			}
-			
-			RemoveFilewatcher
-			
-			
-			
-			
-			#cleanup files
-			
-			# Define the number of CSV files
-			$csvCount = 50
-			
-			# Loop through each numbered CSV variable
-			for ($i = 1; $i -le $csvCount; $i++)
-			{
-				$exportVar = "exportreportusercsv$i"
-				$finalVar = "finaloutcsv$i"
-				
-				if (Test-Path (Get-Variable -Name $exportVar).Value)
-				{
-					Remove-Item (Get-Variable -Name $exportVar).Value
-				}
-				
-				if (Test-Path (Get-Variable -Name $finalVar).Value)
-				{
-					Remove-Item (Get-Variable -Name $finalVar).Value
-				}
-			}
 			
 		
 		
@@ -2540,7 +2622,7 @@ function exportcontact
 			$inputCsv1 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $True } | Export-Csv $finaloutcsv1 -NoTypeInformation -delimiter "|" -Encoding UTF8
 			Start-Sleep -s 5
 			$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-			$Fileout1 = "H:\M365Reports\EARL-TempLookupTable-mailcontact-1-" + $nowfiledate + "-2.csv"
+			$Fileout1 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-mailcontact-1-" + $nowfiledate + "-2.csv"
 			gc $finaloutcsv1 | ? { $_.trim() -ne "" } | set-content $Fileout1 -Encoding UTF8
 		}
 		
@@ -2556,7 +2638,7 @@ function exportcontact
 			$inputCsv2 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $True } | Export-Csv $finaloutcsv2 -NoTypeInformation -delimiter "|" -Encoding UTF8
 			Start-Sleep -s 5
 			$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-			$Fileout2 = "H:\M365Reports\EARL-TempLookupTable-mailcontact-2-" + $nowfiledate + "-2.csv"
+			$Fileout2 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-mailcontact-2-" + $nowfiledate + "-2.csv"
 			gc $finaloutcsv2 | ? { $_.trim() -ne "" } | set-content $Fileout2 -Encoding UTF8
 			
 		}
@@ -2573,7 +2655,7 @@ function exportcontact
 			$inputCsv3 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $True } | Export-Csv $finaloutcsv3 -NoTypeInformation -delimiter "|" -Encoding UTF8
 			Start-Sleep -s 5
 			$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-			$Fileout3 = "H:\M365Reports\EARL-TempLookupTable-mailcontact-3-" + $nowfiledate + "-2.csv"
+			$Fileout3 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-mailcontact-3-" + $nowfiledate + "-2.csv"
 			gc $finaloutcsv3 | ? { $_.trim() -ne "" } | set-content $Fileout3 -Encoding UTF8
 			
 		}
@@ -2591,7 +2673,7 @@ function exportcontact
 			$inputCsv4 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $True } | Export-Csv $finaloutcsv4 -NoTypeInformation -delimiter "|" -Encoding UTF8
 			Start-Sleep -s 5
 			$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-			$Fileout4 = "H:\M365Reports\EARL-TempLookupTable-mailcontact-4-" + $nowfiledate + "-2.csv"
+			$Fileout4 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-mailcontact-4-" + $nowfiledate + "-2.csv"
 			gc $finaloutcsv4 | ? { $_.trim() -ne "" } | set-content $Fileout4 -Encoding UTF8
 		}
 		
@@ -2608,7 +2690,7 @@ function exportcontact
 			$inputCsv5 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $True } | Export-Csv $finaloutcsv5 -NoTypeInformation -delimiter "|" -Encoding UTF8
 			Start-Sleep -s 5
 			$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-			$Fileout5 = "H:\M365Reports\EARL-TempLookupTable-mailcontact-5-" + $nowfiledate + "-2.csv"
+			$Fileout5 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-mailcontact-5-" + $nowfiledate + "-2.csv"
 			gc $finaloutcsv5 | ? { $_.trim() -ne "" } | set-content $Fileout5 -Encoding UTF8
 		}
 		
@@ -2625,7 +2707,7 @@ function exportcontact
 			$inputCsv6 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $True } | Export-Csv $finaloutcsv6 -NoTypeInformation -delimiter "|" -Encoding UTF8
 			Start-Sleep -s 5
 			$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-			$Fileout6 = "H:\M365Reports\EARL-TempLookupTable-mailcontact-6-" + $nowfiledate + "-2.csv"
+			$Fileout6 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-mailcontact-6-" + $nowfiledate + "-2.csv"
 			gc $finaloutcsv6 | ? { $_.trim() -ne "" } | set-content $Fileout6 -Encoding UTF8
 		}
 		
@@ -2642,7 +2724,7 @@ function exportcontact
 			$inputCsv7 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $True } | Export-Csv $finaloutcsv7 -NoTypeInformation -delimiter "|" -Encoding UTF8
 			Start-Sleep -s 5
 			$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-			$Fileout7 = "H:\M365Reports\EARL-TempLookupTable-mailcontact-7-" + $nowfiledate + "-2.csv"
+			$Fileout7 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-mailcontact-7-" + $nowfiledate + "-2.csv"
 			gc $finaloutcsv7 | ? { $_.trim() -ne "" } | set-content $Fileout7 -Encoding UTF8
 		}
 		
@@ -2660,7 +2742,7 @@ function exportcontact
 			$inputCsv8 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $True } | Export-Csv $finaloutcsv8 -NoTypeInformation -delimiter "|" -Encoding UTF8
 			Start-Sleep -s 5
 			$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-			$Fileout8 = "H:\M365Reports\EARL-TempLookupTable-mailcontact-8-" + $nowfiledate + "-2.csv"
+			$Fileout8 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-mailcontact-8-" + $nowfiledate + "-2.csv"
 			gc $finaloutcsv8 | ? { $_.trim() -ne "" } | set-content $Fileout8 -Encoding UTF8
 		}
 		
@@ -2678,7 +2760,7 @@ function exportcontact
 			$inputCsv9 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $True } | Export-Csv $finaloutcsv9 -NoTypeInformation -delimiter "|" -Encoding UTF8
 			Start-Sleep -s 5
 			$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-			$Fileout9 = "H:\M365Reports\EARL-TempLookupTable-mailcontact-9-" + $nowfiledate + "-2.csv"
+			$Fileout9 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-mailcontact-9-" + $nowfiledate + "-2.csv"
 			gc $finaloutcsv9 | ? { $_.trim() -ne "" } | set-content $Fileout9 -Encoding UTF8
 		}
 		
@@ -2694,7 +2776,7 @@ function exportcontact
 			$inputCsv1 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $True } | Export-Csv $finaloutcsv10 -NoTypeInformation -delimiter "|" -Encoding UTF8
 			Start-Sleep -s 5
 			$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-			$Fileout10 = "H:\M365Reports\EARL-TempLookupTable-mailcontact-10-" + $nowfiledate + "-2.csv"
+			$Fileout10 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-mailcontact-10-" + $nowfiledate + "-2.csv"
 			gc $finaloutcsv10 | ? { $_.trim() -ne "" } | set-content $Fileout10 -Encoding UTF8
 		}
 		
@@ -2709,7 +2791,7 @@ function exportcontact
 			$inputCsv11 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $True } | Export-Csv $finaloutcsv11 -NoTypeInformation -delimiter "|" -Encoding UTF8
 			Start-Sleep -s 5
 			$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-			$Fileout11 = "H:\M365Reports\EARL-TempLookupTable-mailcontact-11-" + $nowfiledate + "-2.csv"
+			$Fileout11 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-mailcontact-11-" + $nowfiledate + "-2.csv"
 			gc $finaloutcsv11 | ? { $_.trim() -ne "" } | set-content $Fileout11 -Encoding UTF8
 		}
 		
@@ -2724,7 +2806,7 @@ function exportcontact
 			$inputCsv12 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $True } | Export-Csv $finaloutcsv12 -NoTypeInformation -delimiter "|" -Encoding UTF8
 			Start-Sleep -s 5
 			$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-			$Fileout12 = "H:\M365Reports\EARL-TempLookupTable-mailcontact-12-" + $nowfiledate + "-2.csv"
+			$Fileout12 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-mailcontact-12-" + $nowfiledate + "-2.csv"
 			gc $finaloutcsv12 | ? { $_.trim() -ne "" } | set-content $Fileout12 -Encoding UTF8
 		}
 		
@@ -2739,7 +2821,7 @@ function exportcontact
 			$inputCsv13 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $True } | Export-Csv $finaloutcsv13 -NoTypeInformation -delimiter "|" -Encoding UTF8
 			Start-Sleep -s 5
 			$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-			$Fileout13 = "H:\M365Reports\EARL-TempLookupTable-mailcontact-13-" + $nowfiledate + "-2.csv"
+			$Fileout13 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-mailcontact-13-" + $nowfiledate + "-2.csv"
 			gc $finaloutcsv13 | ? { $_.trim() -ne "" } | set-content $Fileout13 -Encoding UTF8
 		}
 		
@@ -2755,7 +2837,7 @@ function exportcontact
 			$inputCsv14 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $True } | Export-Csv $finaloutcsv14 -NoTypeInformation -delimiter "|" -Encoding UTF8
 			Start-Sleep -s 5
 			$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-			$Fileout14 = "H:\M365Reports\EARL-TempLookupTable-mailcontact-14-" + $nowfiledate + "-2.csv"
+			$Fileout14 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-mailcontact-14-" + $nowfiledate + "-2.csv"
 			gc $finaloutcsv14 | ? { $_.trim() -ne "" } | set-content $Fileout14 -Encoding UTF8
 		}
 		
@@ -2770,7 +2852,7 @@ function exportcontact
 			$inputCsv15 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $True } | Export-Csv $finaloutcsv15 -NoTypeInformation -delimiter "|" -Encoding UTF8
 			Start-Sleep -s 5
 			$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-			$Fileout15 = "H:\M365Reports\EARL-TempLookupTable-mailcontact-15-" + $nowfiledate + "-2.csv"
+			$Fileout15 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-mailcontact-15-" + $nowfiledate + "-2.csv"
 			gc $finaloutcsv15 | ? { $_.trim() -ne "" } | set-content $Fileout15 -Encoding UTF8
 		}
 		
@@ -4268,7 +4350,7 @@ function exportmailuser
 		$inputCsv1 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $True } | Export-Csv $finaloutcsv -NoTypeInformation -delimiter "|" -Encoding UTF8
 		Start-Sleep -s 5
 		$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-		$Fileout = "H:\M365Reports\EARL-TempLookupTable-mailuser-" + $nowfiledate + "-2.csv"
+		$Fileout = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-mailuser-" + $nowfiledate + "-2.csv"
 		gc $finaloutcsv | ? { $_.trim() -ne "" } | set-content $Fileout -Encoding UTF8
 		
 	
@@ -4935,7 +5017,7 @@ function exportDL
 			$inputCsv1 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv -NoTypeInformation -delimiter "|" -Encoding UTF8
 			Start-Sleep -s 5
 			$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-			$Outfile1 = "H:\M365Reports\EARL-TempLookupTable-groups-1-" + $nowfiledate + "-2.csv"
+			$Outfile1 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-1-" + $nowfiledate + "-2.csv"
 			gc $finaloutcsv | ? { $_.trim() -ne "" } | set-content $Outfile1 -Encoding UTF8
 			
 			Start-Sleep -s 2
@@ -4945,7 +5027,7 @@ function exportDL
 			$inputCsv2 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv2 -NoTypeInformation -delimiter "|" -Encoding UTF8
 			Start-Sleep -s 5
 			$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-			$Outfile2 = "H:\M365Reports\EARL-TempLookupTable-groups-2-" + $nowfiledate + "-2.csv"
+			$Outfile2 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-2-" + $nowfiledate + "-2.csv"
 			gc $finaloutcsv2 | ? { $_.trim() -ne "" } | set-content $Outfile2 -Encoding UTF8
 			
 			Start-Sleep -s 2
@@ -4954,7 +5036,7 @@ function exportDL
 			$inputCsv3 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv3 -NoTypeInformation -delimiter "|" -Encoding UTF8
 			Start-Sleep -s 5
 			$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-			$Outfile3 = "H:\M365Reports\EARL-TempLookupTable-groups-3-" + $nowfiledate + "-2.csv"
+			$Outfile3 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-3-" + $nowfiledate + "-2.csv"
 			gc $finaloutcsv3 | ? { $_.trim() -ne "" } | set-content $Outfile3 -Encoding UTF8
 			
 			Start-Sleep -s 2
@@ -4966,7 +5048,7 @@ function exportDL
 				$inputCsv4 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv4 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile4 = "H:\M365Reports\EARL-TempLookupTable-groups-4-" + $nowfiledate + "-2.csv"
+				$Outfile4 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-4-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv4 | ? { $_.trim() -ne "" } | set-content $Outfile4 -Encoding UTF8
 				
 			}
@@ -4980,7 +5062,7 @@ function exportDL
 				$inputCsv5 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv5 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile5 = "H:\M365Reports\EARL-TempLookupTable-groups-5-" + $nowfiledate + "-2.csv"
+				$Outfile5 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-5-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv5 | ? { $_.trim() -ne "" } | set-content $Outfile5 -Encoding UTF8
 				
 			}
@@ -4995,7 +5077,7 @@ function exportDL
 				$inputCsv6 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv6 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile6 = "H:\M365Reports\EARL-TempLookupTable-groups-6-" + $nowfiledate + "-2.csv"
+				$Outfile6 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-6-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv6 | ? { $_.trim() -ne "" } | set-content $Outfile6 -Encoding UTF8
 				
 			}
@@ -5009,7 +5091,7 @@ function exportDL
 				$inputCsv7 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv7 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile7 = "H:\M365Reports\EARL-TempLookupTable-groups-7-" + $nowfiledate + "-2.csv"
+				$Outfile7 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-7-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv7 | ? { $_.trim() -ne "" } | set-content $Outfile7 -Encoding UTF8
 				
 			}
@@ -5023,7 +5105,7 @@ function exportDL
 				$inputCsv8 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv8 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile8 = "H:\M365Reports\EARL-TempLookupTable-groups-8-" + $nowfiledate + "-2.csv"
+				$Outfile8 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-8-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv8 | ? { $_.trim() -ne "" } | set-content $Outfile8 -Encoding UTF8
 				
 			}
@@ -5037,7 +5119,7 @@ function exportDL
 				$inputCsv9 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv9 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile9 = "H:\M365Reports\EARL-TempLookupTable-groups-9-" + $nowfiledate + "-2.csv"
+				$Outfile9 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-9-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv9 | ? { $_.trim() -ne "" } | set-content $Outfile9 -Encoding UTF8
 				
 			}
@@ -5051,7 +5133,7 @@ function exportDL
 				$inputCsv10 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv10 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile10 = "H:\M365Reports\EARL-TempLookupTable-groups-10-" + $nowfiledate + "-2.csv"
+				$Outfile10 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-10-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv10 | ? { $_.trim() -ne "" } | set-content $Outfile10 -Encoding UTF8
 				
 			}
@@ -5065,7 +5147,7 @@ function exportDL
 				$inputCsv11 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv11 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile11 = "H:\M365Reports\EARL-TempLookupTable-groups-11-" + $nowfiledate + "-2.csv"
+				$Outfile11 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-11-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv11 | ? { $_.trim() -ne "" } | set-content $Outfile11 -Encoding UTF8
 				
 			}
@@ -5080,7 +5162,7 @@ function exportDL
 				$inputCsv12 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv12 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile12 = "H:\M365Reports\EARL-TempLookupTable-groups-12-" + $nowfiledate + "-2.csv"
+				$Outfile12 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-12-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv12 | ? { $_.trim() -ne "" } | set-content $Outfile12 -Encoding UTF8
 				
 			}
@@ -5094,7 +5176,7 @@ function exportDL
 				$inputCsv13 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv13 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile13 = "H:\M365Reports\EARL-TempLookupTable-groups-13-" + $nowfiledate + "-2.csv"
+				$Outfile13 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-13-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv13 | ? { $_.trim() -ne "" } | set-content $Outfile13 -Encoding UTF8
 				
 			}
@@ -5108,7 +5190,7 @@ function exportDL
 				$inputCsv14 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv14 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile14 = "H:\M365Reports\EARL-TempLookupTable-groups-14-" + $nowfiledate + "-2.csv"
+				$Outfile14 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-14-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv14 | ? { $_.trim() -ne "" } | set-content $Outfile14 -Encoding UTF8
 				
 			}
@@ -5122,7 +5204,7 @@ function exportDL
 				$inputCsv15 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv15 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile15 = "H:\M365Reports\EARL-TempLookupTable-groups-15-" + $nowfiledate + "-2.csv"
+				$Outfile15 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-15-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv15 | ? { $_.trim() -ne "" } | set-content $Outfile15 -Encoding UTF8
 				
 			}
@@ -5136,7 +5218,7 @@ function exportDL
 				$inputCsv16 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv16 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile16 = "H:\M365Reports\EARL-TempLookupTable-groups-16-" + $nowfiledate + "-2.csv"
+				$Outfile16 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-16-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv16 | ? { $_.trim() -ne "" } | set-content $Outfile16 -Encoding UTF8
 				
 			}
@@ -5150,7 +5232,7 @@ function exportDL
 				$inputCsv17 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv17 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile17 = "H:\M365Reports\EARL-TempLookupTable-groups-17-" + $nowfiledate + "-2.csv"
+				$Outfile17 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-17-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv17 | ? { $_.trim() -ne "" } | set-content $Outfile17 -Encoding UTF8
 				
 			}
@@ -5164,7 +5246,7 @@ function exportDL
 				$inputCsv18 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv18 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile18 = "H:\M365Reports\EARL-TempLookupTable-groups-18-" + $nowfiledate + "-2.csv"
+				$Outfile18 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-18-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv18 | ? { $_.trim() -ne "" } | set-content $Outfile18 -Encoding UTF8
 				
 			}
@@ -5178,7 +5260,7 @@ function exportDL
 				$inputCsv19 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv19 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile19 = "H:\M365Reports\EARL-TempLookupTable-groups-19-" + $nowfiledate + "-2.csv"
+				$Outfile19 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-19-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv19 | ? { $_.trim() -ne "" } | set-content $Outfile19 -Encoding UTF8
 				
 			}
@@ -5191,7 +5273,7 @@ function exportDL
 				$inputCsv20 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv20 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile20 = "H:\M365Reports\EARL-TempLookupTable-groups-20-" + $nowfiledate + "-2.csv"
+				$Outfile20 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-20-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv20 | ? { $_.trim() -ne "" } | set-content $Outfile20 -Encoding UTF8
 				
 			}
@@ -5205,7 +5287,7 @@ function exportDL
 				$inputCsv21 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv21 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile21 = "H:\M365Reports\EARL-TempLookupTable-groups-21-" + $nowfiledate + "-2.csv"
+				$Outfile21 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-21-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv21 | ? { $_.trim() -ne "" } | set-content $Outfile21 -Encoding UTF8
 				
 			}
@@ -5220,7 +5302,7 @@ function exportDL
 				$inputCsv22 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv22 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile22 = "H:\M365Reports\EARL-TempLookupTable-groups-22-" + $nowfiledate + "-2.csv"
+				$Outfile22 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-22-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv22 | ? { $_.trim() -ne "" } | set-content $Outfile22 -Encoding UTF8
 				
 			}
@@ -5234,7 +5316,7 @@ function exportDL
 				$inputCsv23 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv23 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile23 = "H:\M365Reports\EARL-TempLookupTable-groups-23-" + $nowfiledate + "-2.csv"
+				$Outfile23 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-23-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv23 | ? { $_.trim() -ne "" } | set-content $Outfile23 -Encoding UTF8
 				
 			}
@@ -5248,7 +5330,7 @@ function exportDL
 				$inputCsv24 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv24 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile24 = "H:\M365Reports\EARL-TempLookupTable-groups-24-" + $nowfiledate + "-2.csv"
+				$Outfile24 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-24-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv24 | ? { $_.trim() -ne "" } | set-content $Outfile24 -Encoding UTF8
 				
 			}
@@ -5262,7 +5344,7 @@ function exportDL
 				$inputCsv25 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv25 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile25 = "H:\M365Reports\EARL-TempLookupTable-groups-25-" + $nowfiledate + "-2.csv"
+				$Outfile25 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-25-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv25 | ? { $_.trim() -ne "" } | set-content $Outfile25 -Encoding UTF8
 				
 			}
@@ -5276,7 +5358,7 @@ function exportDL
 				$inputCsv26 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv26 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile26 = "H:\M365Reports\EARL-TempLookupTable-groups-26-" + $nowfiledate + "-2.csv"
+				$Outfile26 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-26-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv26 | ? { $_.trim() -ne "" } | set-content $Outfile26 -Encoding UTF8
 				
 			}
@@ -5290,7 +5372,7 @@ function exportDL
 				$inputCsv27 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv27 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile27 = "H:\M365Reports\EARL-TempLookupTable-groups-27-" + $nowfiledate + "-2.csv"
+				$Outfile27 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-27-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv27 | ? { $_.trim() -ne "" } | set-content $Outfile27 -Encoding UTF8
 				
 			}
@@ -5304,7 +5386,7 @@ function exportDL
 				$inputCsv28 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv28 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile28 = "H:\M365Reports\EARL-TempLookupTable-groups-28-" + $nowfiledate + "-2.csv"
+				$Outfile28 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-28-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv28 | ? { $_.trim() -ne "" } | set-content $Outfile28 -Encoding UTF8
 				
 			}
@@ -5317,7 +5399,7 @@ function exportDL
 				$inputCsv29 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv29 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile29 = "H:\M365Reports\EARL-TempLookupTable-groups-29-" + $nowfiledate + "-2.csv"
+				$Outfile29 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-29-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv29 | ? { $_.trim() -ne "" } | set-content $Outfile29 -Encoding UTF8
 				
 			}
@@ -5330,7 +5412,7 @@ function exportDL
 				$inputCsv30 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv30 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile30 = "H:\M365Reports\EARL-TempLookupTable-groups-30-" + $nowfiledate + "-2.csv"
+				$Outfile30 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-30-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv30 | ? { $_.trim() -ne "" } | set-content $Outfile30 -Encoding UTF8
 				
 			}
@@ -5344,7 +5426,7 @@ function exportDL
 				$inputCsv31 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv31 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile31 = "H:\M365Reports\EARL-TempLookupTable-groups-31-" + $nowfiledate + "-2.csv"
+				$Outfile31 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-31-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv31 | ? { $_.trim() -ne "" } | set-content $Outfile31 -Encoding UTF8
 				
 			}
@@ -5359,7 +5441,7 @@ function exportDL
 				$inputCsv32 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv32 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile32 = "H:\M365Reports\EARL-TempLookupTable-groups-32-" + $nowfiledate + "-2.csv"
+				$Outfile32 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-32-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv32 | ? { $_.trim() -ne "" } | set-content $Outfile32 -Encoding UTF8
 				
 			}
@@ -5373,7 +5455,7 @@ function exportDL
 				$inputCsv33 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv33 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile33 = "H:\M365Reports\EARL-TempLookupTable-groups-33-" + $nowfiledate + "-2.csv"
+				$Outfile33 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-33-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv33 | ? { $_.trim() -ne "" } | set-content $Outfile33 -Encoding UTF8
 				
 			}
@@ -5387,7 +5469,7 @@ function exportDL
 				$inputCsv34 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv34 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile34 = "H:\M365Reports\EARL-TempLookupTable-groups-34-" + $nowfiledate + "-2.csv"
+				$Outfile34 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-34-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv34 | ? { $_.trim() -ne "" } | set-content $Outfile34 -Encoding UTF8
 				
 			}
@@ -5401,7 +5483,7 @@ function exportDL
 				$inputCsv35 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv35 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile35 = "H:\M365Reports\EARL-TempLookupTable-groups-35-" + $nowfiledate + "-2.csv"
+				$Outfile35 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-35-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv35 | ? { $_.trim() -ne "" } | set-content $Outfile35 -Encoding UTF8
 				
 			}
@@ -5415,7 +5497,7 @@ function exportDL
 				$inputCsv36 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv36 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile36 = "H:\M365Reports\EARL-TempLookupTable-groups-36-" + $nowfiledate + "-2.csv"
+				$Outfile36 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-36-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv36 | ? { $_.trim() -ne "" } | set-content $Outfile36 -Encoding UTF8
 				
 			}
@@ -5429,7 +5511,7 @@ function exportDL
 				$inputCsv37 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv37 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile37 = "H:\M365Reports\EARL-TempLookupTable-groups-37-" + $nowfiledate + "-2.csv"
+				$Outfile37 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-37-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv37 | ? { $_.trim() -ne "" } | set-content $Outfile37 -Encoding UTF8
 				
 			}
@@ -5443,7 +5525,7 @@ function exportDL
 				$inputCsv38 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv38 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile38 = "H:\M365Reports\EARL-TempLookupTable-groups-38-" + $nowfiledate + "-2.csv"
+				$Outfile38 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-38-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv38 | ? { $_.trim() -ne "" } | set-content $Outfile38 -Encoding UTF8
 				
 			}
@@ -5456,7 +5538,7 @@ function exportDL
 				$inputCsv39 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv39 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile39 = "H:\M365Reports\EARL-TempLookupTable-groups-39-" + $nowfiledate + "-2.csv"
+				$Outfile39 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-39-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv39 | ? { $_.trim() -ne "" } | set-content $Outfile39 -Encoding UTF8
 				
 			}
@@ -5469,7 +5551,7 @@ function exportDL
 				$inputCsv40 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv40 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile40 = "H:\M365Reports\EARL-TempLookupTable-groups-40-" + $nowfiledate + "-2.csv"
+				$Outfile40 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-40-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv40 | ? { $_.trim() -ne "" } | set-content $Outfile40 -Encoding UTF8
 				
 			}
@@ -5483,7 +5565,7 @@ function exportDL
 				$inputCsv41 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv41 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile41 = "H:\M365Reports\EARL-TempLookupTable-groups-41-" + $nowfiledate + "-2.csv"
+				$Outfile41 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-41-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv41 | ? { $_.trim() -ne "" } | set-content $Outfile41 -Encoding UTF8
 				
 			}
@@ -5498,7 +5580,7 @@ function exportDL
 				$inputCsv42 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv42 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile42 = "H:\M365Reports\EARL-TempLookupTable-groups-42-" + $nowfiledate + "-2.csv"
+				$Outfile42 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-42-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv42 | ? { $_.trim() -ne "" } | set-content $Outfile42 -Encoding UTF8
 				
 			}
@@ -5512,7 +5594,7 @@ function exportDL
 				$inputCsv43 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv43 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile43 = "H:\M365Reports\EARL-TempLookupTable-groups-43-" + $nowfiledate + "-2.csv"
+				$Outfile43 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-43-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv43 | ? { $_.trim() -ne "" } | set-content $Outfile43 -Encoding UTF8
 				
 			}
@@ -5526,7 +5608,7 @@ function exportDL
 				$inputCsv44 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv44 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile44 = "H:\M365Reports\EARL-TempLookupTable-groups-44-" + $nowfiledate + "-2.csv"
+				$Outfile44 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-44-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv44 | ? { $_.trim() -ne "" } | set-content $Outfile44 -Encoding UTF8
 				
 			}
@@ -5540,7 +5622,7 @@ function exportDL
 				$inputCsv45 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv45 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile45 = "H:\M365Reports\EARL-TempLookupTable-groups-45-" + $nowfiledate + "-2.csv"
+				$Outfile45 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-45-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv45 | ? { $_.trim() -ne "" } | set-content $Outfile45 -Encoding UTF8
 				
 			}
@@ -5554,7 +5636,7 @@ function exportDL
 				$inputCsv46 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv46 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile46 = "H:\M365Reports\EARL-TempLookupTable-groups-46-" + $nowfiledate + "-2.csv"
+				$Outfile46 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-46-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv46 | ? { $_.trim() -ne "" } | set-content $Outfile46 -Encoding UTF8
 				
 			}
@@ -5568,7 +5650,7 @@ function exportDL
 				$inputCsv47 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv47 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile47 = "H:\M365Reports\EARL-TempLookupTable-groups-47-" + $nowfiledate + "-2.csv"
+				$Outfile47 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-47-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv47 | ? { $_.trim() -ne "" } | set-content $Outfile47 -Encoding UTF8
 				
 			}
@@ -5582,7 +5664,7 @@ function exportDL
 				$inputCsv48 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv48 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile48 = "H:\M365Reports\EARL-TempLookupTable-groups-48-" + $nowfiledate + "-2.csv"
+				$Outfile48 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-48-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv48 | ? { $_.trim() -ne "" } | set-content $Outfile48 -Encoding UTF8
 				
 			}
@@ -5595,7 +5677,7 @@ function exportDL
 				$inputCsv49 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv49 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile49 = "H:\M365Reports\EARL-TempLookupTable-groups-49-" + $nowfiledate + "-2.csv"
+				$Outfile49 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-49-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv49 | ? { $_.trim() -ne "" } | set-content $Outfile49 -Encoding UTF8
 				
 			}
@@ -5608,7 +5690,7 @@ function exportDL
 				$inputCsv50 | Sort -Property @{ Expression = { $_.Samaccountname }; Ascending = $False } | Export-Csv $finaloutcsv50 -NoTypeInformation -delimiter "|" -Encoding UTF8
 				Start-Sleep -s 5
 				$nowfiledate = get-date -f "yyyy-MM-dd-hh-mm-ss"
-				$Outfile50 = "H:\M365Reports\EARL-TempLookupTable-groups-50-" + $nowfiledate + "-2.csv"
+				$Outfile50 = "H:\M365Reports\TempLookupUploads\EARL-TempLookupTable-groups-50-" + $nowfiledate + "-2.csv"
 				gc $finaloutcsv50 | ? { $_.trim() -ne "" } | set-content $Outfile50 -Encoding UTF8
 				
 			}

@@ -6566,11 +6566,11 @@ if (Test-Path $exportreportcsv2)
 }
 
 
-exportDLEXO
-exportSGEXO
-exportRLEXO
-exportDDLEXO
-#exportM365GrpEXO
+#exportDLEXO
+#exportSGEXO
+#exportRLEXO
+#exportDDLEXO
+exportM365GrpEXO
 
 
 $now = [datetime]::Now.ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss")
